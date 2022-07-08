@@ -75,9 +75,6 @@ import { getUserAgent } from "./modules/agent";
 import { getBuildInfo } from "./modules/client";
 import { getRecommendedGPUFlags, getRedommendedOSFlags } from "../main/modules/optimize";
 
-// Set global user agent
-app.userAgentFallback = getUserAgent(process.versions.chrome);
-
 // Set AppUserModelID on Windows
 {
   const {AppUserModelId} = getBuildInfo()
@@ -89,6 +86,10 @@ app.userAgentFallback = getUserAgent(process.versions.chrome);
 
 /** Whenever `--start-minimized` or `-m` switch is used when running client. */
 let startHidden = false;
+
+// Whenever '--custom-platform' switch is used when running client.
+let customPlatform = undefined;
+
 let overwriteMain: (() => void | unknown) | undefined;
 
 {
@@ -119,6 +120,7 @@ let overwriteMain: (() => void | unknown) | undefined;
       " " + kolor.underscore("Options:") + "\n" +
       renderLine("--version  -V","Show current application version.")+
       renderLine("--start-minimized  -m","Hide application at first run.") +
+      renderLine("--custom-platform" + "=" + kolor.yellow("{platform}"), "Use a custom " + kolor.yellow("{platform}") + kolor.gray(" when determining user agent. Must be a valid NodeJS.Platform value.")) +
       renderLine("--export-l10n"+ "=" + kolor.yellow("{dir}"), "Export currently loaded translation files from") +
       " ".repeat(32)+kolor.gray("the application to the ") + kolor.yellow("{dir}") + kolor.gray(" directory.\n")+
       renderLine("--verbose  -v", "Show debug messages."),
@@ -135,6 +137,9 @@ let overwriteMain: (() => void | unknown) | undefined;
   }
   if (cmd.hasSwitch("start-minimized") || cmd.hasSwitch("m"))
     startHidden = true;
+  if (cmd.hasSwitch("custom-platform")) {
+    customPlatform = cmd.getSwitchValue("custom-platform") as NodeJS.Platform;
+  }
   if (cmd.hasSwitch("export-l10n")) {
     overwriteMain = () => {
       const locale = new l10n;
@@ -201,6 +206,9 @@ let overwriteMain: (() => void | unknown) | undefined;
   for(const flag of getRedommendedOSFlags())
     applyFlags(flag[0], flag[1]);
 }
+// Set global user agent
+app.userAgentFallback = getUserAgent(process.versions.chrome, customPlatform);
+
 // Some variable declarations
 
 const singleInstance = app.requestSingleInstanceLock();
